@@ -1,0 +1,108 @@
+# Build Log
+
+## Architecture decisions
+
+| # | Decision | Rationale | Alternative considered |
+|---|---|---|---|
+| 1 | Multi-AZ from the start | Production-representative; single-AZ invites "how do you handle an AZ failure" in review | Single-AZ (rejected — reads as a shortcut) |
+| 2 | SSM Session Manager instead of open SSH | Zero inbound rules, current best practice | Bastion with port 22 open (rejected) |
+| 3 | Console/CLI first, Terraform second | Build intuition on primitives before abstracting; yields two portfolio artifacts | Terraform from day one (rejected — skips understanding the primitives) |
+| 4 | Direct IAM policy attachment, no group | Single-user project — a group would wrap one policy for one user with no payoff | IAM group (rejected for now; would revisit if multi-user) |
+| 5 | Custom-scoped `iam:PassRole` policy | `AmazonEC2FullAccess` deliberately excludes `PassRole` to prevent privilege escalation; scoped the `Resource` to one role ARN instead of `*` | Broader PassRole grant (rejected — reopens the escalation risk AWS excluded by design) |
+| 6 | AWS Budgets over raw CloudWatch alarm | Simpler setup, notifications go to any email (not just root's) | Manual `EstimatedCharges` CloudWatch alarm (still the "classic" answer, not what was built) |
+| 7 | Static access key over `aws login` | Still the most universally documented CLI auth pattern; `aws login` (CLI v2.32+, browser-based temporary creds) flagged as a stronger option to revisit | `aws login` (deferred, not rejected) |
+
+## Phase 0 — Guardrails & IAM
+
+**Account:** Synsmyr Forgue — flagged in AWS as account alias/root; account ID
+intentionally not hardcoded here (see note in Open Items).
+
+**Region:** `us-east-1` — cheapest pricing, full feature availability, matches
+the region billing/CloudWatch metrics require, negligible latency difference
+from the US East Coast.
+
+- [x] Root user: MFA enabled, no active access keys
+- [x] AWS Budget: `aws-vpc-build-budget`
+  - Type: Cost budget, Monthly, Recurring, fixed amount $5.00
+  - Alert #1: Actual spend > 80% ($4.00) → email
+  - Alert #2: Actual spend > 100% ($5.00) → email
+  - (Both alerts use the "Actual" trigger; "Forecasted" was discussed as an
+    earlier-warning alternative but not required at this budget size)
+- [x] IAM Role: `vpc-project-ec2-ssm-role`
+  - Trusted entity: AWS service → EC2 (use case: "EC2 Role for AWS Systems Manager")
+  - Trust policy: allows `ec2.amazonaws.com` to `sts:AssumeRole`
+  - Permissions: `AmazonSSMManagedInstanceCore` (AWS managed) — nothing broader
+  - Purpose: attached to EC2 instances in Phase 5 so the SSM Agent can register
+    without any inbound SSH rule
+- [x] IAM User: `vpc-project-builder`
+  - Console access: disabled — CLI/programmatic only
+  - Permissions method: policies attached directly (not via a group)
+  - Policies attached:
+    - `AmazonEC2FullAccess` (AWS managed) — covers VPC/subnet/route
+      table/security group actions, all of which live in the `ec2:*` namespace
+    - `vpc-project-pass-ssm-role` (customer managed) — grants `iam:PassRole`
+      scoped to exactly the `vpc-project-ec2-ssm-role` ARN
+  - MFA: intentionally skipped — no console password exists for this user, so
+    there's no sign-in surface for MFA to protect
+  - Access key: created and verified working (ID intentionally not recorded
+    here — see Open Items)
+- [x] AWS CLI installed locally via Homebrew → `aws-cli/2.36.40`
+- [x] Local named profile configured: `aws configure --profile vpc-project`
+- [ ] Identity verified: `aws sts get-caller-identity --profile vpc-project`
+      should resolve to `arn:...:user/vpc-project-builder` — confirm and check
+      this box once done
+
+## Troubleshooting log
+
+1. **Budget amount field rejected `$5`.** Validator wanted a bare number.
+   Error: "Budgeted amount must be a number." Fix: entered `5`, no `$`.
+2. **Budget name field blocked submission when empty.** Fix: named it
+   `aws-vpc-build-budget`.
+3. **Role vs. User terminology mix-up.** Started building an IAM *Role* (for
+   EC2/SSM) under a step meant for creating an IAM *User* for CLI login. A
+   role has no login and is assumed by a service; a user is a persistent
+   identity for a person. Resolved by keeping the role (it's legitimate,
+   early Phase 5 work) and separately creating the actual user afterward.
+4. **Policy vs. Role confusion during permission selection.** A screen
+   showing 52 "ec2" search results was a list of IAM *policies*, not roles,
+   despite a similar-looking flow. Resolved by selecting `AmazonEC2FullAccess`.
+5. **`AmazonEC2FullAccess` doesn't include `iam:PassRole`.** By design — AWS
+   excludes it from EC2-managed policies to prevent privilege escalation (EC2
+   access alone shouldn't let you attach *any* role to an instance). Resolved
+   with a customer-managed policy scoping `PassRole` to one specific role ARN.
+6. **AWS CLI not installed locally.** `aws configure --profile vpc-project` →
+   `zsh: command not found: aws`. Console setup (IAM, Budgets) has no bearing
+   on whether the CLI binary exists on the machine — separate concerns.
+   Resolved via `brew install awscli`; verified with `aws --version`.
+7. **Uncertainty over the `AWS Access Key ID [None]:` prompt.** This value is
+   generated per-account, once, in the IAM console — it can't be supplied
+   externally. Clarified where to retrieve it and that the secret is
+   unrecoverable if not saved at creation time (requires deleting and
+   regenerating the key).
+8. **CloudShell vs. local terminal.** CloudShell auto-authenticates as the
+   current console session and doesn't suit named multi-profile workflows or
+   living next to the project's future Terraform files. Local terminal is the
+   right tool for the whole project going forward.
+
+## Naming & tagging conventions
+
+| Resource | Name |
+|---|---|
+| IAM Role (EC2 → SSM) | `vpc-project-ec2-ssm-role` |
+| IAM User (CLI identity) | `vpc-project-builder` |
+| Customer-managed policy | `vpc-project-pass-ssm-role` |
+| AWS Budget | `aws-vpc-build-budget` |
+| Local AWS CLI profile | `vpc-project` |
+| Resource tag (all resources) | `Project = aws-vpc-build` |
+
+## Open items / next steps
+
+- Confirm `aws sts get-caller-identity --profile vpc-project` resolves
+  correctly before starting Phase 1.
+- Account ID and access key ID are deliberately not written into this file —
+  neither should be committed to git history, even though only the *secret*
+  key is truly sensitive. When Phase 8 (Terraform) needs the account ID, pull
+  it via `data "aws_caller_identity"` rather than hardcoding it.
+- Decide whether to migrate from a static access key to `aws login`
+  (browser-based temporary credentials, CLI v2.32+) before or after Phase 1.
+- Begin Phase 1: CIDR plan (`10.0.0.0/16`, four `/24` subnets across two AZs).

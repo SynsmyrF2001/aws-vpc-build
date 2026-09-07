@@ -1,0 +1,13 @@
+# AWS credentials — never commit these
+.aws/
+*.pem
+*.env
+
+# Terraform (Phase 8+)
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# OS cruft
+.DS_Store
