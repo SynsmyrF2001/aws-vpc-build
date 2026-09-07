@@ -48,9 +48,8 @@ from the US East Coast.
     here — see Open Items)
 - [x] AWS CLI installed locally via Homebrew → `aws-cli/2.36.40`
 - [x] Local named profile configured: `aws configure --profile vpc-project`
-- [ ] Identity verified: `aws sts get-caller-identity --profile vpc-project`
-      should resolve to `arn:...:user/vpc-project-builder` — confirm and check
-      this box once done
+- [x] Identity verified: `aws sts get-caller-identity --profile vpc-project`
+      resolves to `arn:...:user/vpc-project-builder` — confirmed 2026-09-07
 
 ## Troubleshooting log
 
@@ -97,8 +96,6 @@ from the US East Coast.
 
 ## Open items / next steps
 
-- Confirm `aws sts get-caller-identity --profile vpc-project` resolves
-  correctly before starting Phase 1.
 - Account ID and access key ID are deliberately not written into this file —
   neither should be committed to git history, even though only the *secret*
   key is truly sensitive. When Phase 8 (Terraform) needs the account ID, pull
