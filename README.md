@@ -9,7 +9,7 @@ troubleshooting.
 ## Status
 
 - [x] Phase 0 — Guardrails & IAM
-- [ ] Phase 1 — CIDR & subnet planning
+- [x] Phase 1 — CIDR & subnet planning
 - [ ] Phase 2 — VPC, subnets, IGW, route tables
 - [ ] Phase 3 — NAT gateway
 - [ ] Phase 4 — Security groups & NACLs
