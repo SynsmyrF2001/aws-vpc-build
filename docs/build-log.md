@@ -11,6 +11,11 @@
 | 5 | Custom-scoped `iam:PassRole` policy | `AmazonEC2FullAccess` deliberately excludes `PassRole` to prevent privilege escalation; scoped the `Resource` to one role ARN instead of `*` | Broader PassRole grant (rejected — reopens the escalation risk AWS excluded by design) |
 | 6 | AWS Budgets over raw CloudWatch alarm | Simpler setup, notifications go to any email (not just root's) | Manual `EstimatedCharges` CloudWatch alarm (still the "classic" answer, not what was built) |
 | 7 | Static access key over `aws login` | Still the most universally documented CLI auth pattern; `aws login` (CLI v2.32+, browser-based temporary creds) flagged as a stronger option to revisit | `aws login` (deferred, not rejected) |
+| 8 | AWS CLI over Console for resource creation, from Phase 2 on | Commands are exact and copy-paste-able into logs; syntax carries almost directly into Terraform in Phase 8 | Console clicking (kept for verification/screenshots, not for creating resources) |
+| 9 | Avoided the VPC Console's "VPC and more" wizard | It batches VPC + subnets + IGW + route tables + NAT into one invisible step, defeating the point of seeing each primitive get created | One-click wizard (rejected — hides the learning) |
+| 10 | Explicit private route table, not the VPC's implicit "main" table | Makes it obvious later exactly which subnets are private and why | Relying on the unnamed default "main" table (rejected) |
+| 11 | Single NAT Gateway, not one per AZ | Halves the hourly cost during the learning phase; accepted risk: private-b's egress depends entirely on public-a's AZ staying healthy | Two NAT gateways, one per AZ (deferred — the real production answer; revisit in Phase 9 or Terraform) |
+| 12 | `network-ids.env` as a running source of truth for resource IDs | Phase 2's script only echoed IDs to stdout, which don't persist across separate script runs; an env file lets each phase source the last phase's output | Manual copy-paste of IDs between phases (rejected after Phase 2 — too error-prone) |
 
 ## Phase 0 — Guardrails & IAM
 
@@ -53,6 +58,17 @@ from the US East Coast.
 
 ## Phase 2 — VPC, subnets, IGW, route tables
 
+- [x] VPC created: `10.0.0.0/16`; DNS hostnames explicitly enabled (off by
+      default on custom VPCs — needed later for EC2 public DNS names)
+- [x] Four subnets created per the CIDR plan, tagged `Project=aws-vpc-build`
+- [x] Auto-assign public IP enabled on both public subnets
+- [x] Internet Gateway created and attached to the VPC
+- [x] Public route table: `0.0.0.0/0 → igw-...`, associated with both public subnets
+- [x] Private route table: explicit, associated with both private subnets,
+      **no internet route** — verified via `describe-route-tables` showing
+      only the `local` (`10.0.0.0/16`) route
+- Built and run via `phase2-create-network.sh` in the repo root — clean run, no errors
+
 Resource IDs created in this phase. Every command from Phase 3 onward
 references these exact values.
 
@@ -70,6 +86,31 @@ PRIVATE_RT=rtb-005299cd4cae1fa46
 These are resource identifiers, not credentials — unlike the account ID and
 access key ID (see Open Items), they carry no access on their own and are
 safe to commit.
+
+## Phase 3 — NAT Gateway
+
+- [x] Elastic IP allocated
+- [x] NAT Gateway created in `public-a` (single NAT — see decision #11)
+- [x] Waited for `available` state via `aws ec2 wait nat-gateway-available`
+      rather than manually polling the console
+- [x] Private route table updated: `0.0.0.0/0 → nat-...` added alongside the
+      existing `local` route
+- [x] Verified with a real before/after: `describe-route-tables` run against
+      the same route table both before Phase 3 (one route) and after (two
+      routes)
+- Built and run via `phase3-create-nat.sh` — clean run, no errors
+- Cost flag: a NAT Gateway runs ≈ $0.045/hr (~$1/day, ~$32/month) — against a
+  $5 budget, tear it down between sessions with `delete-nat-gateway` +
+  `release-address` rather than leaving it running idle; both are cheap and
+  fast to recreate
+
+Resource IDs created in this phase. The default route from `PRIVATE_RT` to
+`NAT_ID` references these values.
+
+```bash
+NAT_ID=nat-0dffb94193751001d
+EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
+```
 
 ## Troubleshooting log
 
@@ -102,6 +143,30 @@ safe to commit.
    current console session and doesn't suit named multi-profile workflows or
    living next to the project's future Terraform files. Local terminal is the
    right tool for the whole project going forward.
+9. **Angle brackets in an example command taken literally.** A command shown
+   as `--route-table-ids <PRIVATE_RT>` was pasted into the shell exactly as
+   written. In bash/zsh, `<` and `>` are real input/output redirection
+   operators, not placeholder syntax — the shell tried to read from a file
+   literally named `PRIVATE_RT` and failed with "no such file or directory."
+   Fix: substitute the real ID directly, or use
+   `$(grep KEY= network-ids.env | cut -d= -f2)` so commands stay copy-paste
+   safe without manual editing.
+10. **Downloaded script not found by `bash`.** `bash phase3-create-nat.sh`
+    failed with "No such file or directory" immediately after downloading it.
+    Cause: browser downloads land in `~/Downloads` by default, unrelated to
+    the shell's current working directory. Fix:
+    `mv ~/Downloads/phase3-create-nat.sh ~/Downloads/network-ids.env ./`
+    from inside the repo.
+11. **Pager left open after wide CLI output.** Both `less` (Phase 0) and
+    `--output table` results (Phase 3) drop the terminal into a pager
+    instead of returning to the prompt. Fix: `q` exits the pager without
+    running or cancelling anything.
+12. **Deliberate before/after verification — a habit worth keeping, not a
+    bug.** Ran `describe-route-tables` against the private route table
+    *before* executing `phase3-create-nat.sh` to confirm only the `local`
+    route existed, then re-ran the identical command afterward to watch the
+    `0.0.0.0/0 → nat-...` route actually appear. Confirms the change with a
+    real diff rather than trusting a script's own "success" output.
 
 ## Naming & tagging conventions
 
@@ -123,5 +188,7 @@ safe to commit.
 - Decide whether to migrate from a static access key to `aws login`
   (browser-based temporary credentials, CLI v2.32+) — still undecided; revisit
   before Phase 8 (Terraform).
-- Begin Phase 3: NAT gateway in `public-a`, then a default route to it from
-  the private route table (`PRIVATE_RT`).
+- Decide per session: tear down the NAT Gateway + EIP, or leave running into
+  the next phase — a conscious cost/convenience trade-off, not a default.
+- Begin Phase 4: security groups and NACLs — the first resources that
+  reference specific instances/roles rather than pure network plumbing.

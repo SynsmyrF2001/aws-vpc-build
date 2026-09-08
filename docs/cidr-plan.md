@@ -13,4 +13,8 @@ Gaps (`10.0.2.0`–`10.0.9.0`, `10.0.12.0` and above) are reserved for future
 tiers or a third AZ without renumbering existing subnets.
 
 Note: AWS reserves 5 addresses per subnet (not the usual 2), hence 251
-usable rather than 254.
+usable rather than 254 per `/24`.
+
+Two AZs rather than three: the minimum for high availability, keeping cost
+and complexity proportional to this phase's learning goals. A third AZ is a
+natural Phase 9 extension.
