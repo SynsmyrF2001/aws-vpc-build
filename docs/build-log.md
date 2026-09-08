@@ -51,6 +51,26 @@ from the US East Coast.
 - [x] Identity verified: `aws sts get-caller-identity --profile vpc-project`
       resolves to `arn:...:user/vpc-project-builder` — confirmed 2026-09-07
 
+## Phase 2 — VPC, subnets, IGW, route tables
+
+Resource IDs created in this phase. Every command from Phase 3 onward
+references these exact values.
+
+```bash
+VPC_ID=vpc-00c13439a534d15bb
+PUBLIC_A=subnet-0db0f90a4c1bbbbc1
+PUBLIC_B=subnet-05bdbc0c8d8ede300
+PRIVATE_A=subnet-042dcdc30d65fb74e
+PRIVATE_B=subnet-0136f816653eccb9b
+IGW_ID=igw-09465978156fc92f0
+PUBLIC_RT=rtb-02e68286cf13e3741
+PRIVATE_RT=rtb-005299cd4cae1fa46
+```
+
+These are resource identifiers, not credentials — unlike the account ID and
+access key ID (see Open Items), they carry no access on their own and are
+safe to commit.
+
 ## Troubleshooting log
 
 1. **Budget amount field rejected `$5`.** Validator wanted a bare number.
@@ -101,5 +121,7 @@ from the US East Coast.
   key is truly sensitive. When Phase 8 (Terraform) needs the account ID, pull
   it via `data "aws_caller_identity"` rather than hardcoding it.
 - Decide whether to migrate from a static access key to `aws login`
-  (browser-based temporary credentials, CLI v2.32+) before or after Phase 1.
-- Begin Phase 1: CIDR plan (`10.0.0.0/16`, four `/24` subnets across two AZs).
+  (browser-based temporary credentials, CLI v2.32+) — still undecided; revisit
+  before Phase 8 (Terraform).
+- Begin Phase 3: NAT gateway in `public-a`, then a default route to it from
+  the private route table (`PRIVATE_RT`).
