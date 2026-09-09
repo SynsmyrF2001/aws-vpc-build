@@ -20,6 +20,10 @@
 | 14 | `bastion-sg` has zero inbound rules | SSM Session Manager works entirely over outbound HTTPS from the instance to AWS; nothing needs to be open inbound for management access | Inbound SSH rule on the bastion (rejected — the whole point of choosing SSM was avoiding this) |
 | 15 | Custom NACL built for the private subnets, not left on the default | Chosen deliberately (over documenting default-allow and moving on) for hands-on practice with explicit deny rules and the stateless ephemeral-port requirement, both common interview topics | Leaving the default (allow-all) NACL in place, relying on SGs alone (valid, common in real deployments — deferred here for the learning value) |
 | 16 | Explicit `deny tcp/22` rule on the private NACL, redundant with the SGs | Defense-in-depth: even a future SG mistake that opens port 22 still can't reach the private subnets, because the NACL blocks it independently | Relying on the SGs alone to block SSH (rejected — no second layer if an SG is ever misconfigured) |
+| 17 | AMI resolved dynamically via an AWS-maintained SSM public parameter, never hardcoded | AMI IDs are region-specific and go stale as AWS ships updates — a hardcoded ID silently breaks the script months later | Hardcoding a known-good AMI ID (rejected) |
+| 18 | Amazon Linux 2023 as the base AMI | Ships with the SSM Agent pre-installed, which is the one thing this whole project's access model depends on | Ubuntu (rejected for this project — SSM Agent isn't preinstalled, adds an unnecessary bootstrap step) |
+| 19 | Instance profile existence checked defensively before attempting to create one | Verifies Phase 0's role/instance-profile pairing rather than assuming it — this check is what surfaced the real IAM gap in entry #20 below | Assuming the instance profile exists and skipping the check (rejected — would have failed less informatively at launch time instead) |
+| 20 | Two additional narrowly-scoped IAM policies added to `vpc-project-builder` mid-phase (`vpc-project-ssm-access`, `vpc-project-instance-profile-mgmt`) | Real errors surfaced real gaps in the original Phase 0 policy; each grant is scoped to exactly what failed, not broadened preemptively | Granting broad SSM/IAM access upfront "just in case" (rejected — defeats the point of doing least-privilege iteratively) |
 
 ## Phase 0 — Guardrails & IAM
 
@@ -137,6 +141,32 @@ EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
   `scripts/phase4b-create-nacl.sh` — both clean runs, no errors, once
   actually present on disk (see troubleshooting log)
 
+## Phase 5 — EC2 instances
+
+- [x] Latest Amazon Linux 2023 AMI resolved: `ami-081b0a6eac00b4f53`
+- [x] Instance profile `vpc-project-ec2-ssm-role` confirmed to already exist
+      (auto-created by the IAM console back in Phase 0 when the role itself
+      was created — see troubleshooting #20 for why this took two attempts
+      to confirm)
+- [x] Bastion launched in `public-a`, `bastion-sg`, instance profile attached:
+      `i-09f124bc9499c5377`
+- [x] App instance launched in `private-a`, `app-sg`, instance profile
+      attached, user-data installs nginx with a custom identifying page:
+      `i-00b9e827e0ef6bed3`
+- [x] Both instances confirmed `running` via `aws ec2 wait instance-running`
+- [x] Session Manager plugin installed locally (separate from the AWS CLI
+      itself — required for `aws ssm start-session` to work at all)
+- [ ] SSM registration verified (`PingStatus: Online` on both instances via
+      `describe-instance-information`) — pending as of this log entry
+
+Cost/account context worth recording: this account falls under AWS's
+post-July-2025 credit-based Free Tier (not the older 12-month/750-hours
+model) — a $100–200 promotional credit expiring 6 months from signup
+(confirmed: $119.47 remaining, expires December 10, 2026). Billing shows
+$0.00 month-to-date because usage is being absorbed by the credit balance;
+the $5 Budget alarm from Phase 0 still tracks correctly regardless, since
+AWS Budgets measures pre-credit usage cost, not the post-credit bill.
+
 ## Troubleshooting log
 
 1. **Budget amount field rejected `$5`.** Validator wanted a bare number.
@@ -230,6 +260,49 @@ EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
     view means more content exists below (page down with the space bar);
     `(END)` means there's genuinely nothing further. Easy to mistake `:` for
     a stalled or broken view rather than "there's more, keep scrolling."
+19. **IAM gap: `vpc-project-builder` had no SSM permissions at all.**
+    `AmazonEC2FullAccess` covers `ec2:*` but not `ssm:*` — a completely
+    separate IAM namespace, even though the two services are used together
+    constantly in this project. Blocked the AMI lookup (`ssm:GetParameters`)
+    and would have blocked `aws ssm start-session` (`ssm:StartSession`) next.
+    Fixed with a new scoped policy, `vpc-project-ssm-access`: read access to
+    AWS's own public SSM parameters, plus session start/describe/terminate
+    scoped to this account's EC2 instances.
+20. **IAM gap: a permission-denied failure and a genuine "doesn't exist"
+    looked identical to the script.** The instance-profile existence check
+    (`aws iam get-instance-profile`) itself requires `iam:GetInstanceProfile`
+    — a permission `vpc-project-builder` didn't have. Since the check only
+    looks at exit code, an access-denied response and a real 404 both
+    triggered the same "missing — creating it" branch, which then failed on
+    `iam:CreateInstanceProfile`. Fixed with `vpc-project-instance-profile-mgmt`,
+    scoped to the one instance-profile ARN this project needs. Once granted,
+    the check succeeded and confirmed the profile had actually existed the
+    whole time — the original Phase 5 design assumption (IAM console
+    auto-creates a matching instance profile for EC2 roles) was correct;
+    `CreateInstanceProfile`/`AddRoleToInstanceProfile` turned out unneeded in
+    the end, harmless to have granted anyway.
+21. **A script dying partway through left a real, billing, untracked EC2
+    instance behind.** The bastion launched successfully; the app instance's
+    launch then failed on a missing local file (`app-userdata.sh`), and
+    because the script exited before its own "append IDs to
+    `network-ids.env`" step, the bastion's ID was never recorded anywhere.
+    A live preview of exactly the problem Terraform's state file exists to
+    solve (Phase 8) — a plain bash script has no memory of partial success.
+22. **Second occurrence of a two-file download only partially completing** —
+    `app-userdata.sh` specifically, same shape as the NACL/security-groups
+    gap from Phase 4.
+23. **A relayed instance ID was malformed** (16 hex characters instead of
+    the correct 17) and AWS correctly rejected it outright with
+    `InvalidInstanceID.Malformed` rather than silently doing something
+    wrong — compounded by angle-bracket placeholder syntax reused in the
+    same command. Resolved by re-querying AWS directly
+    (`describe-instances` filtered by tag and state) for the real ID
+    instead of trusting a retyped/relayed value, run as an isolated step
+    before acting on the result.
+24. **General lesson reinforced twice this phase:** when a value might be
+    wrong, re-derive it from the source (AWS's own API) rather than
+    retrying a guess a second or third time — cheaper and more reliable
+    than iterating on something already suspect.
 
 ## Naming & tagging conventions
 
@@ -253,6 +326,9 @@ EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
   before Phase 8 (Terraform).
 - Decide per session: tear down the NAT Gateway + EIP, or leave running into
   the next phase — a conscious cost/convenience trade-off, not a default.
-- Begin Phase 5: EC2 instances — bastion in a public subnet, app instance in
-  a private subnet, both using the IAM role and security groups built in
-  Phases 0 and 4.
+- Confirm `PingStatus: Online` for both instances via
+  `describe-instance-information` before relying on SSM connectivity.
+- Begin Phase 6: validation — SSM into the bastion, reach the app instance's
+  nginx page from inside the VPC, confirm the private instance is still
+  unreachable directly from the internet, and check VPC Flow Logs for the
+  rejected connection attempts as proof rather than assertion.
