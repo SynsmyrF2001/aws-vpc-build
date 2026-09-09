@@ -24,6 +24,8 @@
 | 18 | Amazon Linux 2023 as the base AMI | Ships with the SSM Agent pre-installed, which is the one thing this whole project's access model depends on | Ubuntu (rejected for this project — SSM Agent isn't preinstalled, adds an unnecessary bootstrap step) |
 | 19 | Instance profile existence checked defensively before attempting to create one | Verifies Phase 0's role/instance-profile pairing rather than assuming it — this check is what surfaced the real IAM gap in entry #20 below | Assuming the instance profile exists and skipping the check (rejected — would have failed less informatively at launch time instead) |
 | 20 | Two additional narrowly-scoped IAM policies added to `vpc-project-builder` mid-phase (`vpc-project-ssm-access`, `vpc-project-instance-profile-mgmt`) | Real errors surfaced real gaps in the original Phase 0 policy; each grant is scoped to exactly what failed, not broadened preemptively | Granting broad SSM/IAM access upfront "just in case" (rejected — defeats the point of doing least-privilege iteratively) |
+| 21 | VPC Flow Logs enabled with a dedicated CloudWatch log group and purpose-built IAM role | Turns "the security groups should work" into a permanent, queryable record instead of an inference from a terminal timeout | Relying on the `nc` timeout alone as proof (rejected — not reproducible or shareable evidence) |
+| 22 | `network-ids.env` carved out of the blanket `*.env` gitignore rule | The rule was written defensively for a case (secrets) that never applied to this specific file — it holds only AWS resource IDs, which aren't sensitive, and is more valuable tracked than excluded | Leaving it untracked (rejected — this was silently true for the whole project until caught in this phase) |
 
 ## Phase 0 — Guardrails & IAM
 
@@ -167,6 +169,42 @@ $0.00 month-to-date because usage is being absorbed by the credit balance;
 the $5 Budget alarm from Phase 0 still tracks correctly regardless, since
 AWS Budgets measures pre-credit usage cost, not the post-credit bill.
 
+## Phase 6 — Validation
+
+- [x] SSM session into bastion confirmed working — real interactive shell,
+      zero inbound ports involved
+- [x] `curl http://10.0.10.81` from inside the bastion session returned the
+      app tier's nginx page — proves route tables, `app-sg`, and the NACL's
+      rule 100 all cooperate correctly for VPC-internal traffic
+- [x] SSM session opened directly into the app instance, independent of the
+      bastion — confirms the app instance's own NAT path to the SSM service
+      works on its own, not just as a hop-through
+- [x] NAT translation proven, not just inferred: `curl
+      https://checkip.amazonaws.com` from inside the app instance returned
+      `32.197.4.224`, matched exactly against the NAT gateway's Elastic IP
+      via `describe-addresses` in a separate terminal
+- [x] Negative path tested from an external machine:
+      `nc -zv -G 3 44.201.47.228 22` → timed out, not refused — confirms
+      `bastion-sg`'s zero-inbound-rules design silently drops rather than
+      actively rejecting
+- [x] VPC Flow Logs created — log group `/aws-vpc-build/flow-logs`, IAM role
+      `vpc-project-flow-logs-role`, flow log ID `fl-0486c284df07f0d59`
+- [x] Logs Insights query (`filter action = "REJECT" | filter dstPort = 22`)
+      returned 5 REJECT entries in the trailing hour — see screenshot below
+
+![Flow Logs REJECT query results](screenshots/phase6-flow-logs-reject.png)
+
+Notable finding, not just a routine check: the five rejected entries came
+from four distinct external source IPs in unrelated ranges — `172.233.62.80`,
+`109.160.32.37`, `158.121.180.36`, and `200.225.118.170`, the last appearing
+twice 33 seconds apart. Spread across unrelated ranges like that, this is
+evidence of automated internet-wide port-22 scanning reaching the instance
+and being silently dropped, independent of the deliberate `nc` test.
+`dstAddr` on every entry shows the bastion's *private* IP (`10.0.0.178`), not
+its public one — expected behavior, since Flow Logs capture traffic at the
+ENI, after the Internet Gateway has already translated the destination from
+public to private.
+
 ## Troubleshooting log
 
 1. **Budget amount field rejected `$5`.** Validator wanted a bare number.
@@ -303,6 +341,35 @@ AWS Budgets measures pre-credit usage cost, not the post-credit bill.
     wrong, re-derive it from the source (AWS's own API) rather than
     retrying a guess a second or third time — cheaper and more reliable
     than iterating on something already suspect.
+25. **IAM gap, fourth occurrence of the same pattern:** `vpc-project-builder`
+    lacked `iam:PassRole` on the newly created `vpc-project-flow-logs-role`
+    — the existing PassRole policy only listed the SSM role's ARN. Fixed by
+    adding a second ARN to that policy's existing `Resource` array rather
+    than creating a new policy, since it's the same permission covering one
+    more specific resource.
+26. **IAM eventual consistency, not a wrong edit.** After the PassRole fix,
+    `create-flow-logs` failed once more with the identical error. Checking
+    the policy's actual JSON and its "Policy versions" tab directly (both
+    confirmed the fix was correctly saved and set as default) ruled out a
+    bad edit; waiting roughly a minute and retrying succeeded. A real,
+    documented AWS characteristic — policy changes don't always propagate
+    instantly everywhere.
+27. **`nc -w 3` didn't reliably enforce a timeout on macOS.** The negative-
+    path test hung well past 3 seconds. Root cause: on macOS's built-in
+    (BSD) `nc`, `-w` is an idle-connection timeout, not a connect-attempt
+    timeout — the OS's own TCP retry logic kept the attempt alive
+    underneath it. `-G`, macOS's connect-timeout-specific flag, gave a fast,
+    deterministic result instead.
+28. **Flow Log `dstAddr` showed a private IP where a public one was
+    targeted** — initially looked like a mismatch, actually expected
+    behavior (see architecture note above on IGW translation happening
+    before the ENI sees the packet).
+29. **The captured REJECT traffic wasn't the deliberate test at all.** Four
+    distinct source IPs across unrelated ranges is consistent with
+    automated scanning, not one manual `nc` attempt repeated. Genuinely
+    useful discovery rather than a troubleshooting problem — logged here
+    because it changed the interpretation of the result, not because
+    anything was broken.
 
 ## Naming & tagging conventions
 
@@ -326,9 +393,6 @@ AWS Budgets measures pre-credit usage cost, not the post-credit bill.
   before Phase 8 (Terraform).
 - Decide per session: tear down the NAT Gateway + EIP, or leave running into
   the next phase — a conscious cost/convenience trade-off, not a default.
-- Confirm `PingStatus: Online` for both instances via
-  `describe-instance-information` before relying on SSM connectivity.
-- Begin Phase 6: validation — SSM into the bastion, reach the app instance's
-  nginx page from inside the VPC, confirm the private instance is still
-  unreachable directly from the internet, and check VPC Flow Logs for the
-  rejected connection attempts as proof rather than assertion.
+- Begin Phase 7: finalize documentation — polished network diagram,
+  `docs/security-groups.md` populated with the actual SG/NACL rule tables,
+  cost breakdown, and teardown instructions.
