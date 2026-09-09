@@ -10,5 +10,8 @@
 *.tfstate.*
 .terraform.lock.hcl
 
+# Downloaded installers — re-fetchable from AWS, not project source
+*.pkg
+
 # OS cruft
 .DS_Store

@@ -13,8 +13,8 @@ troubleshooting.
 - [x] Phase 2 — VPC, subnets, IGW, route tables
 - [x] Phase 3 — NAT gateway
 - [x] Phase 4 — Security groups & NACLs
-- [ ] Phase 5 — EC2 deployment
-- [ ] Phase 6 — Validation & testing
+- [x] Phase 5 — EC2 deployment
+- [x] Phase 6 — Validation & testing
 - [ ] Phase 7 — Documentation
 - [ ] Phase 8 — Terraform
 - [ ] Phase 9 — Extensions (peering / VPN / endpoints)

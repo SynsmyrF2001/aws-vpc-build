@@ -376,8 +376,10 @@ public to private.
 | Resource | Name |
 |---|---|
 | IAM Role (EC2 → SSM) | `vpc-project-ec2-ssm-role` |
+| IAM Role (VPC Flow Logs → CloudWatch) | `vpc-project-flow-logs-role` |
 | IAM User (CLI identity) | `vpc-project-builder` |
 | Customer-managed policy | `vpc-project-pass-ssm-role` |
+| CloudWatch log group (flow logs) | `/aws-vpc-build/flow-logs` |
 | AWS Budget | `aws-vpc-build-budget` |
 | Local AWS CLI profile | `vpc-project` |
 | Resource tag (all resources) | `Project = aws-vpc-build` |
