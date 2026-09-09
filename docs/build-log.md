@@ -102,7 +102,7 @@ safe to commit.
 - [x] Verified with a real before/after: `describe-route-tables` run against
       the same route table both before Phase 3 (one route) and after (two
       routes)
-- Built and run via `phase3-create-nat.sh` — clean run, no errors
+- Built and run via `scripts/phase3-create-nat.sh` — clean run, no errors
 - Cost flag: a NAT Gateway runs ≈ $0.045/hr (~$1/day, ~$32/month) — against a
   $5 budget, tear it down between sessions with `delete-nat-gateway` +
   `release-address` rather than leaving it running idle; both are cheap and
@@ -133,9 +133,9 @@ EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
   - AWS's own implicit final rule (`32767`, deny all) confirmed visible in
     `describe-network-acls` output — the textbook "implicit deny," seen
     directly instead of just described
-- Built and run via `phase4-create-security-groups.sh` and
-  `phase4b-create-nacl.sh` — both clean runs, no errors, once actually
-  present on disk (see troubleshooting log)
+- Built and run via `scripts/phase4-create-security-groups.sh` and
+  `scripts/phase4b-create-nacl.sh` — both clean runs, no errors, once
+  actually present on disk (see troubleshooting log)
 
 ## Troubleshooting log
 
