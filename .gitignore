@@ -2,6 +2,7 @@
 .aws/
 *.pem
 *.env
+!network-ids.env
 
 # Terraform (Phase 8+)
 .terraform/
