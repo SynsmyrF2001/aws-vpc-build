@@ -16,6 +16,10 @@
 | 10 | Explicit private route table, not the VPC's implicit "main" table | Makes it obvious later exactly which subnets are private and why | Relying on the unnamed default "main" table (rejected) |
 | 11 | Single NAT Gateway, not one per AZ | Halves the hourly cost during the learning phase; accepted risk: private-b's egress depends entirely on public-a's AZ staying healthy | Two NAT gateways, one per AZ (deferred — the real production answer; revisit in Phase 9 or Terraform) |
 | 12 | `network-ids.env` as a running source of truth for resource IDs | Phase 2's script only echoed IDs to stdout, which don't persist across separate script runs; an env file lets each phase source the last phase's output | Manual copy-paste of IDs between phases (rejected after Phase 2 — too error-prone) |
+| 13 | Security groups reference other security groups as sources, not CIDR blocks | `app-sg`'s inbound rule allows traffic from `bastion-sg` directly — stays correct even if subnets are renumbered later | CIDR-based source rules (rejected — breaks silently if IP ranges ever change) |
+| 14 | `bastion-sg` has zero inbound rules | SSM Session Manager works entirely over outbound HTTPS from the instance to AWS; nothing needs to be open inbound for management access | Inbound SSH rule on the bastion (rejected — the whole point of choosing SSM was avoiding this) |
+| 15 | Custom NACL built for the private subnets, not left on the default | Chosen deliberately (over documenting default-allow and moving on) for hands-on practice with explicit deny rules and the stateless ephemeral-port requirement, both common interview topics | Leaving the default (allow-all) NACL in place, relying on SGs alone (valid, common in real deployments — deferred here for the learning value) |
+| 16 | Explicit `deny tcp/22` rule on the private NACL, redundant with the SGs | Defense-in-depth: even a future SG mistake that opens port 22 still can't reach the private subnets, because the NACL blocks it independently | Relying on the SGs alone to block SSH (rejected — no second layer if an SG is ever misconfigured) |
 
 ## Phase 0 — Guardrails & IAM
 
@@ -112,6 +116,27 @@ NAT_ID=nat-0dffb94193751001d
 EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
 ```
 
+## Phase 4 — Security groups & NACL
+
+- [x] `bastion-sg` created — zero inbound rules, default allow-all egress
+- [x] `app-sg` created — inbound `tcp/80` from `bastion-sg` (security-group
+      source, not a CIDR block) — verified via `describe-security-groups`:
+      the rule shows a `UserIdGroupPairs` entry referencing bastion-sg's
+      GroupId, no `IpRanges`/`CidrIp` present anywhere near it
+- [x] `private-nacl` created and associated with both `private-a` and
+      `private-b`, replacing their default NACL association
+  - Inbound: `90` deny tcp/22 from `0.0.0.0/0` · `100` allow all from
+    `10.0.0.0/16` · `110` allow tcp/1024-65535 from `0.0.0.0/0` (ephemeral
+    return traffic)
+  - Outbound: `100` allow all to `10.0.0.0/16` · `110` allow tcp/80 to
+    `0.0.0.0/0` · `120` allow tcp/443 to `0.0.0.0/0`
+  - AWS's own implicit final rule (`32767`, deny all) confirmed visible in
+    `describe-network-acls` output — the textbook "implicit deny," seen
+    directly instead of just described
+- Built and run via `phase4-create-security-groups.sh` and
+  `phase4b-create-nacl.sh` — both clean runs, no errors, once actually
+  present on disk (see troubleshooting log)
+
 ## Troubleshooting log
 
 1. **Budget amount field rejected `$5`.** Validator wanted a bare number.
@@ -167,6 +192,44 @@ EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
     route existed, then re-ran the identical command afterward to watch the
     `0.0.0.0/0 → nat-...` route actually appear. Confirms the change with a
     real diff rather than trusting a script's own "success" output.
+13. **NACL script run before its prerequisite security-group script had
+    actually been downloaded.** `phase4b-create-nacl.sh` completed
+    successfully — the private subnets were network-ACL-protected before
+    `bastion-sg`/`app-sg` existed at all. Not a functional problem (the two
+    scripts are independent), but a reminder that script *order in the plan*
+    and script *order of execution* aren't automatically the same thing —
+    worth a beat to confirm prerequisites are actually done, not just
+    assumed done.
+14. **Placeholder angle brackets caused the same failure as before, this
+    time in a note rather than a real command.** `<any-private-subnet-IP-
+    if-you-had-one>` was pasted into the shell and hit the identical `<`/`>`
+    redirection issue from Phase 3 — a repeat of a known failure mode,
+    flagged here since it's worth being newly cautious around *any* text
+    that looks like a placeholder before running it, not just commands
+    explicitly marked as ready-to-run.
+15. **A missing shell variable produced a misleading result instead of an
+    error.** `describe-security-groups --group-ids $(...)` was run before
+    `APP_SG` existed in `network-ids.env`; the substitution silently
+    resolved to nothing, so the command ran as an unfiltered query and
+    returned every security group in the account — including an unrelated,
+    AWS-auto-created "default VPC" present in every region regardless of
+    activity. Lesson: a missing required argument doesn't always error
+    loudly; sometimes it just broadens the query into something that looks
+    plausible but isn't what was asked for. Always check the `VpcId` in
+    results like this against the actual project VPC ID.
+16. **A presented file was never downloaded at all**, not just misplaced —
+    `ls ~/Downloads/phase4-create-security-groups.sh` came back "No such
+    file or directory" too, confirming the download itself never happened
+    (likely only one of two files presented together got clicked). Fixed by
+    re-presenting the file and downloading it directly.
+17. **AWS CLI accepts protocol names but stores/displays numeric codes.**
+    `--protocol tcp` in `create-network-acl-entry` shows up as `Protocol: 6`
+    in `describe-network-acls` output — not an error, just AWS translating
+    the friendly name to TCP's real IANA protocol number on the way in.
+18. **Pager `:` prompt vs. `(END)`.** A `:` prompt at the bottom of a `less`
+    view means more content exists below (page down with the space bar);
+    `(END)` means there's genuinely nothing further. Easy to mistake `:` for
+    a stalled or broken view rather than "there's more, keep scrolling."
 
 ## Naming & tagging conventions
 
@@ -190,5 +253,6 @@ EIP_ALLOC_ID=eipalloc-08bc61998f700e6ac
   before Phase 8 (Terraform).
 - Decide per session: tear down the NAT Gateway + EIP, or leave running into
   the next phase — a conscious cost/convenience trade-off, not a default.
-- Begin Phase 4: security groups and NACLs — the first resources that
-  reference specific instances/roles rather than pure network plumbing.
+- Begin Phase 5: EC2 instances — bastion in a public subnet, app instance in
+  a private subnet, both using the IAM role and security groups built in
+  Phases 0 and 4.
