@@ -71,7 +71,7 @@ from the US East Coast.
 - [x] Private route table: explicit, associated with both private subnets,
       **no internet route** — verified via `describe-route-tables` showing
       only the `local` (`10.0.0.0/16`) route
-- Built and run via `phase2-create-network.sh` in the repo root — clean run, no errors
+- Built and run via `scripts/phase2-create-network.sh` — clean run, no errors
 
 Resource IDs created in this phase. Every command from Phase 3 onward
 references these exact values.
