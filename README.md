@@ -5,7 +5,7 @@ subnet isolation, NAT gateway egress, least-privilege security groups and a cust
 NACL, and EC2 access exclusively through AWS Systems Manager Session Manager —
 no SSH keys, no open inbound ports, anywhere in the design.
 
-See `docs/network-diagram.png` for the as-built architecture diagram.
+See `docs/network-diagram.svg` for the as-built architecture diagram.
 
 ## What this demonstrates
 
@@ -62,8 +62,8 @@ real usage cost, which is what actually draws down the credit.
 | CloudWatch (Flow Logs) | Ingestion + storage at this volume | Pennies/month |
 | **Total while running** | | **~$1.85/day (~$56/mo)** |
 
-Run `bash scripts/teardown.sh` to remove everything that bills when not
-actively working — see below.
+Run `bash scripts/teardown.sh` to remove it all when not actively working
+— see below.
 
 ## Repo structure
 
@@ -75,7 +75,7 @@ aws-vpc-build/
 │   ├── build-log.md         # Every phase, every decision, every mistake and fix
 │   ├── cidr-plan.md
 │   ├── security-groups.md
-│   ├── network-diagram.png
+│   ├── network-diagram.svg
 │   └── screenshots/
 ├── scripts/
 │   ├── phase2-create-network.sh
@@ -95,30 +95,30 @@ aws-vpc-build/
 bash scripts/teardown.sh
 ```
 
-By default this removes everything that bills, in the order AWS's own
-dependency rules require — instances, flow log, NAT gateway, Elastic IP,
-then the CloudWatch log group. It waits for the NAT gateway to actually
-reach `deleted` before releasing the Elastic IP, because billing stops at
-that state rather than at the delete call, and the address cannot be
-released until the NAT lets go of it.
+Run it from the repo root — it sources `network-ids.env` by relative path.
 
-The free network scaffolding — VPC, subnets, IGW, route tables, security
-groups, NACL — is left standing on purpose. None of it costs anything, and
-it is the reference Phase 8 codifies Terraform against.
+This deletes everything created in Phases 2–6, in the order AWS's own
+dependency rules require: instances, NAT gateway, Elastic IP, flow log,
+NACL, security groups, route tables, IGW, subnets, then the VPC itself. It
+waits for the NAT gateway to actually reach `deleted` before releasing the
+Elastic IP, because billing stops at that state rather than at the delete
+call, and the address cannot be released until the NAT lets go of it.
 
-Two flags:
+The script deliberately omits `set -e`, unlike every build script in this
+project. A teardown that halts on the first error can strand a *more*
+expensive partial state than one that presses on — stopping just after the
+instances terminate but before the NAT gateway is deleted is the single
+costliest place it could stop. Every step is safe to attempt even if an
+earlier one failed or the resource was already removed by hand.
 
-- `--stop` stops the instances instead of terminating them, keeping their
-  EBS volumes (~$1.28/month for the pair) so they can be started again
-- `--all` additionally deletes the VPC and everything inside it: security
-  groups, subnets, NACL, route tables, IGW, then the VPC itself
+Left standing, free or near-free and useful for a rebuild: the IAM user,
+roles and policies, the CloudWatch log group `/aws-vpc-build/flow-logs`, and
+the AWS Budget.
 
-Left standing either way: the IAM user, roles and policies, and the AWS
-Budget — all free, and all needed for a rebuild.
-
-After teardown, `NAT_ID` and `EIP_ALLOC_ID` in `network-ids.env` are stale.
-Re-running `scripts/phase3-create-nat.sh` allocates a **fresh** Elastic IP,
-which will be a different address than the one cited in the Phase 6 logs.
+After teardown every ID in `network-ids.env` is stale. Rebuilding re-runs
+the phase scripts from Phase 2, and `phase3-create-nat.sh` allocates a
+**fresh** Elastic IP — a different address than the one cited in the Phase 6
+logs.
 
 ## Docs
 
