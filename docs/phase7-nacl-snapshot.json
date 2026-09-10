@@ -1,0 +1,106 @@
+{
+    "NetworkAcls": [
+        {
+            "Associations": [
+                {
+                    "NetworkAclAssociationId": "aclassoc-09a4922578005608b",
+                    "NetworkAclId": "acl-0b64faead7bd85f47",
+                    "SubnetId": "subnet-0136f816653eccb9b"
+                },
+                {
+                    "NetworkAclAssociationId": "aclassoc-0b65559e2c0af5926",
+                    "NetworkAclId": "acl-0b64faead7bd85f47",
+                    "SubnetId": "subnet-042dcdc30d65fb74e"
+                }
+            ],
+            "Entries": [
+                {
+                    "CidrBlock": "10.0.0.0/16",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "PortRange": {
+                        "From": 80,
+                        "To": 80
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 110
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "PortRange": {
+                        "From": 443,
+                        "To": 443
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 120
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 22,
+                        "To": 22
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "deny",
+                    "RuleNumber": 90
+                },
+                {
+                    "CidrBlock": "10.0.0.0/16",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 1024,
+                        "To": 65535
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 110
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                }
+            ],
+            "IsDefault": false,
+            "NetworkAclId": "acl-0b64faead7bd85f47",
+            "Tags": [
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "private-nacl"
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "OwnerId": "REDACTED-ACCOUNT-ID"
+        }
+    ]
+}
