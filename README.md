@@ -149,3 +149,4 @@ logs.
 - [Build log & every architecture decision](docs/build-log.md)
 - [CIDR plan](docs/cidr-plan.md)
 - [Security groups & NACL rules](docs/security-groups.md)
+- [Reflections — cross-phase lessons](docs/reflections.md)

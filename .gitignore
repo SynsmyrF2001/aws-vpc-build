@@ -8,7 +8,9 @@
 .terraform/
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
+# .terraform.lock.hcl is tracked on purpose — it pins provider versions
+tfplan
+*.tfplan
 
 # Downloaded installers — re-fetchable from AWS, not project source
 *.pkg

@@ -1,0 +1,600 @@
+{
+  "captured_utc": "2026-09-10T21:59:27Z",
+  "vpc": {
+    "Vpcs": [
+        {
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "InstanceTenancy": "default",
+            "CidrBlockAssociationSet": [
+                {
+                    "AssociationId": "vpc-cidr-assoc-08007f01777073027",
+                    "CidrBlock": "10.0.0.0/16",
+                    "CidrBlockState": {
+                        "State": "associated"
+                    }
+                }
+            ],
+            "IsDefault": false,
+            "Tags": [
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "vpc-project"
+                }
+            ],
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "VpcId": "vpc-00c13439a534d15bb",
+            "State": "available",
+            "CidrBlock": "10.0.0.0/16",
+            "DhcpOptionsId": "dopt-0aba1e44df2a03ecf"
+        }
+    ]
+},
+  "subnets": {
+    "Subnets": [
+        {
+            "AvailabilityZoneId": "use1-az2",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "private-b"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                }
+            ],
+            "SubnetArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:subnet/subnet-0136f816653eccb9b",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+                "HostnameType": "ip-name",
+                "EnableResourceNameDnsARecord": false,
+                "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0136f816653eccb9b",
+            "State": "available",
+            "VpcId": "vpc-00c13439a534d15bb",
+            "CidrBlock": "10.0.11.0/24",
+            "AvailableIpAddressCount": 251,
+            "AvailabilityZone": "us-east-1b",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "public-a"
+                }
+            ],
+            "SubnetArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:subnet/subnet-0db0f90a4c1bbbbc1",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+                "HostnameType": "ip-name",
+                "EnableResourceNameDnsARecord": false,
+                "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0db0f90a4c1bbbbc1",
+            "State": "available",
+            "VpcId": "vpc-00c13439a534d15bb",
+            "CidrBlock": "10.0.0.0/24",
+            "AvailableIpAddressCount": 249,
+            "AvailabilityZone": "us-east-1a",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": true
+        },
+        {
+            "AvailabilityZoneId": "use1-az1",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "private-a"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                }
+            ],
+            "SubnetArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:subnet/subnet-042dcdc30d65fb74e",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+                "HostnameType": "ip-name",
+                "EnableResourceNameDnsARecord": false,
+                "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-042dcdc30d65fb74e",
+            "State": "available",
+            "VpcId": "vpc-00c13439a534d15bb",
+            "CidrBlock": "10.0.10.0/24",
+            "AvailableIpAddressCount": 250,
+            "AvailabilityZone": "us-east-1a",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": false
+        },
+        {
+            "AvailabilityZoneId": "use1-az2",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "public-b"
+                }
+            ],
+            "SubnetArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:subnet/subnet-05bdbc0c8d8ede300",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+                "HostnameType": "ip-name",
+                "EnableResourceNameDnsARecord": false,
+                "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-05bdbc0c8d8ede300",
+            "State": "available",
+            "VpcId": "vpc-00c13439a534d15bb",
+            "CidrBlock": "10.0.1.0/24",
+            "AvailableIpAddressCount": 251,
+            "AvailabilityZone": "us-east-1b",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": true
+        }
+    ]
+},
+  "route_tables": {
+    "RouteTables": [
+        {
+            "Associations": [
+                {
+                    "Main": false,
+                    "RouteTableAssociationId": "rtbassoc-0dc6413a3dd6230a5",
+                    "RouteTableId": "rtb-005299cd4cae1fa46",
+                    "SubnetId": "subnet-0136f816653eccb9b",
+                    "AssociationState": {
+                        "State": "associated"
+                    }
+                },
+                {
+                    "Main": false,
+                    "RouteTableAssociationId": "rtbassoc-0868ecec83d4b00aa",
+                    "RouteTableId": "rtb-005299cd4cae1fa46",
+                    "SubnetId": "subnet-042dcdc30d65fb74e",
+                    "AssociationState": {
+                        "State": "associated"
+                    }
+                }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-005299cd4cae1fa46",
+            "Routes": [
+                {
+                    "DestinationCidrBlock": "10.0.0.0/16",
+                    "GatewayId": "local",
+                    "Origin": "CreateRouteTable",
+                    "State": "active"
+                },
+                {
+                    "DestinationCidrBlock": "0.0.0.0/0",
+                    "NatGatewayId": "nat-0dffb94193751001d",
+                    "Origin": "CreateRoute",
+                    "State": "active"
+                }
+            ],
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "private-rt"
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "OwnerId": "REDACTED-ACCOUNT-ID"
+        },
+        {
+            "Associations": [
+                {
+                    "Main": true,
+                    "RouteTableAssociationId": "rtbassoc-005ce722bca2f4617",
+                    "RouteTableId": "rtb-0ee96ffc40b954dae",
+                    "AssociationState": {
+                        "State": "associated"
+                    }
+                }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-0ee96ffc40b954dae",
+            "Routes": [
+                {
+                    "DestinationCidrBlock": "10.0.0.0/16",
+                    "GatewayId": "local",
+                    "Origin": "CreateRouteTable",
+                    "State": "active"
+                }
+            ],
+            "Tags": [],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "OwnerId": "REDACTED-ACCOUNT-ID"
+        },
+        {
+            "Associations": [
+                {
+                    "Main": false,
+                    "RouteTableAssociationId": "rtbassoc-058048daf963ce8c2",
+                    "RouteTableId": "rtb-02e68286cf13e3741",
+                    "SubnetId": "subnet-05bdbc0c8d8ede300",
+                    "AssociationState": {
+                        "State": "associated"
+                    }
+                },
+                {
+                    "Main": false,
+                    "RouteTableAssociationId": "rtbassoc-0b4845ecdeedc039d",
+                    "RouteTableId": "rtb-02e68286cf13e3741",
+                    "SubnetId": "subnet-0db0f90a4c1bbbbc1",
+                    "AssociationState": {
+                        "State": "associated"
+                    }
+                }
+            ],
+            "PropagatingVgws": [],
+            "RouteTableId": "rtb-02e68286cf13e3741",
+            "Routes": [
+                {
+                    "DestinationCidrBlock": "10.0.0.0/16",
+                    "GatewayId": "local",
+                    "Origin": "CreateRouteTable",
+                    "State": "active"
+                },
+                {
+                    "DestinationCidrBlock": "0.0.0.0/0",
+                    "GatewayId": "igw-09465978156fc92f0",
+                    "Origin": "CreateRoute",
+                    "State": "active"
+                }
+            ],
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "public-rt"
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "OwnerId": "REDACTED-ACCOUNT-ID"
+        }
+    ]
+},
+  "internet_gateways": {
+    "InternetGateways": [
+        {
+            "Attachments": [
+                {
+                    "State": "available",
+                    "VpcId": "vpc-00c13439a534d15bb"
+                }
+            ],
+            "InternetGatewayId": "igw-09465978156fc92f0",
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "vpc-project-igw"
+                }
+            ]
+        }
+    ]
+},
+  "security_groups": {
+    "SecurityGroups": [
+        {
+            "GroupId": "sg-01bd6bd704541a10a",
+            "IpPermissionsEgress": [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "CidrIp": "0.0.0.0/0"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ],
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "app-sg"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "SecurityGroupArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:security-group/sg-01bd6bd704541a10a",
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "GroupName": "app-sg",
+            "Description": "App tier - inbound only from the bastion security group",
+            "IpPermissions": [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": 80,
+                    "ToPort": 80,
+                    "UserIdGroupPairs": [
+                        {
+                            "UserId": "REDACTED-ACCOUNT-ID",
+                            "GroupId": "sg-015f1011f22037bdd"
+                        }
+                    ],
+                    "IpRanges": [],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ]
+        },
+        {
+            "GroupId": "sg-015f1011f22037bdd",
+            "IpPermissionsEgress": [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "CidrIp": "0.0.0.0/0"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ],
+            "Tags": [
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "bastion-sg"
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "SecurityGroupArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:security-group/sg-015f1011f22037bdd",
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "GroupName": "bastion-sg",
+            "Description": "Bastion host - management via SSM only, no inbound rules",
+            "IpPermissions": []
+        },
+        {
+            "GroupId": "sg-0051ef5d69d6fbdb6",
+            "IpPermissionsEgress": [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [],
+                    "IpRanges": [
+                        {
+                            "CidrIp": "0.0.0.0/0"
+                        }
+                    ],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "SecurityGroupArn": "arn:aws:ec2:us-east-1:REDACTED-ACCOUNT-ID:security-group/sg-0051ef5d69d6fbdb6",
+            "OwnerId": "REDACTED-ACCOUNT-ID",
+            "GroupName": "default",
+            "Description": "default VPC security group",
+            "IpPermissions": [
+                {
+                    "IpProtocol": "-1",
+                    "UserIdGroupPairs": [
+                        {
+                            "UserId": "REDACTED-ACCOUNT-ID",
+                            "GroupId": "sg-0051ef5d69d6fbdb6"
+                        }
+                    ],
+                    "IpRanges": [],
+                    "Ipv6Ranges": [],
+                    "PrefixListIds": []
+                }
+            ]
+        }
+    ]
+},
+  "network_acls": {
+    "NetworkAcls": [
+        {
+            "Associations": [
+                {
+                    "NetworkAclAssociationId": "aclassoc-REDACTED-ACCOUNT-IDc7191",
+                    "NetworkAclId": "acl-06a9cf725f34c2271",
+                    "SubnetId": "subnet-0db0f90a4c1bbbbc1"
+                },
+                {
+                    "NetworkAclAssociationId": "aclassoc-06113b0a5fe16fd94",
+                    "NetworkAclId": "acl-06a9cf725f34c2271",
+                    "SubnetId": "subnet-05bdbc0c8d8ede300"
+                }
+            ],
+            "Entries": [
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                }
+            ],
+            "IsDefault": true,
+            "NetworkAclId": "acl-06a9cf725f34c2271",
+            "Tags": [],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "OwnerId": "REDACTED-ACCOUNT-ID"
+        },
+        {
+            "Associations": [
+                {
+                    "NetworkAclAssociationId": "aclassoc-09aREDACTED-ACCOUNT-ID8b",
+                    "NetworkAclId": "acl-0b64faead7bd85f47",
+                    "SubnetId": "subnet-0136f816653eccb9b"
+                },
+                {
+                    "NetworkAclAssociationId": "aclassoc-0b65559e2c0af5926",
+                    "NetworkAclId": "acl-0b64faead7bd85f47",
+                    "SubnetId": "subnet-042dcdc30d65fb74e"
+                }
+            ],
+            "Entries": [
+                {
+                    "CidrBlock": "10.0.0.0/16",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "PortRange": {
+                        "From": 80,
+                        "To": 80
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 110
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "PortRange": {
+                        "From": 443,
+                        "To": 443
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 120
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": true,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 22,
+                        "To": 22
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "deny",
+                    "RuleNumber": 90
+                },
+                {
+                    "CidrBlock": "10.0.0.0/16",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "allow",
+                    "RuleNumber": 100
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "PortRange": {
+                        "From": 1024,
+                        "To": 65535
+                    },
+                    "Protocol": "6",
+                    "RuleAction": "allow",
+                    "RuleNumber": 110
+                },
+                {
+                    "CidrBlock": "0.0.0.0/0",
+                    "Egress": false,
+                    "Protocol": "-1",
+                    "RuleAction": "deny",
+                    "RuleNumber": 32767
+                }
+            ],
+            "IsDefault": false,
+            "NetworkAclId": "acl-0b64faead7bd85f47",
+            "Tags": [
+                {
+                    "Key": "Project",
+                    "Value": "aws-vpc-build"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "private-nacl"
+                }
+            ],
+            "VpcId": "vpc-00c13439a534d15bb",
+            "OwnerId": "REDACTED-ACCOUNT-ID"
+        }
+    ]
+}
+}

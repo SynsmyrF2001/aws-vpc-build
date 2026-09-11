@@ -26,6 +26,10 @@
 | 20 | Two additional narrowly-scoped IAM policies added to `vpc-project-builder` mid-phase (`vpc-project-ssm-access`, `vpc-project-instance-profile-mgmt`) | Real errors surfaced real gaps in the original Phase 0 policy; each grant is scoped to exactly what failed, not broadened preemptively | Granting broad SSM/IAM access upfront "just in case" (rejected — defeats the point of doing least-privilege iteratively) |
 | 21 | VPC Flow Logs enabled with a dedicated CloudWatch log group and purpose-built IAM role | Turns "the security groups should work" into a permanent, queryable record instead of an inference from a terminal timeout | Relying on the `nc` timeout alone as proof (rejected — not reproducible or shareable evidence) |
 | 22 | `network-ids.env` carved out of the blanket `*.env` gitignore rule | The rule was written defensively for a case (secrets) that never applied to this specific file — it holds only AWS resource IDs, which aren't sensitive, and is more valuable tracked than excluded | Leaving it untracked (rejected — this was silently true for the whole project until caught in this phase) |
+| 23 | As-built diagram regenerated rather than reusing the original target diagram unchanged | Reflects the actual current state (AZ-a live, AZ-b provisioned but unused) rather than the original plan — documentation honesty over convenience | Reusing the Phase 0 target diagram as-is (rejected — would misrepresent what's actually running) |
+| 24 | Native S3 state locking (`use_lockfile = true`, Terraform 1.10+) instead of S3 + DynamoDB | Simpler and current — one less resource to bootstrap and pay for | The older S3 + DynamoDB pattern (still valid, but now legacy — worth knowing it exists, since older tutorials assume it) |
+| 25 | Terraform module boundaries (`vpc` / `security` / `compute`) mirror the hand-built phase boundaries | The same reasoning that made those phases coherent, independently testable units applies just as well to modules | A single flat `.tf` file with everything in it (rejected — loses the composability and the parallel to the phases already documented) |
+| 26 | Full rebuild over `terraform import` for the Terraform transition — and course-corrected mid-teardown when a modified script's behavior didn't match that choice | Noticing "what actually happened doesn't match what I asked for" before building on top of it — see `reflections.md` | Proceeding as if a blank slate existed when it didn't (rejected — would have produced duplicate, conflicting infrastructure) |
 
 ## Phase 0 — Guardrails & IAM
 
@@ -205,6 +209,54 @@ its public one — expected behavior, since Flow Logs capture traffic at the
 ENI, after the Internet Gateway has already translated the destination from
 public to private.
 
+## Phase 7 — Documentation
+
+- [x] `docs/security-groups.md` populated with the full security-group and
+      NACL rule tables
+- [x] `scripts/teardown.sh` (v1) written — full teardown in reverse
+      dependency order
+- [x] As-built network diagram generated, reflecting the actual deployed
+      state rather than the original target
+- [x] `README.md` rewritten — architecture summary, phase status, cost
+      table, teardown instructions, docs index
+
+## Phase 8 — Terraform (in progress)
+
+- [x] Prerequisites: full teardown verified empty via `describe-vpcs`;
+      Terraform 1.16.1 installed (direct binary download, not Homebrew);
+      S3 state bucket created with versioning enabled; `vpc-project-builder`
+      granted scoped S3 access
+- [x] `terraform/versions.tf` — S3 backend with native locking, AWS provider
+      pinned to `~> 5.0`, `default_tags` applying `Project`/`ManagedBy`
+      automatically
+- [x] `terraform init` successful — backend connected, provider v5.100.0
+      installed, `.terraform.lock.hcl` generated (committed to git, unlike
+      most `.lock` files)
+- [x] `modules/vpc/` (`variables.tf`, `main.tf`, `outputs.tf`) — VPC, 4
+      subnets, IGW, EIP, NAT gateway, 2 route tables + associations,
+      matching the real Phase 1 CIDR plan exactly via variable defaults
+- [x] `terraform/main.tf`, `terraform/outputs.tf` — root module wiring
+- [x] `terraform plan` reviewed before applying — `14 to add, 0 to change,
+      0 to destroy`; `enable_dns_hostnames`/`enable_dns_support` and all
+      three `default_tags` confirmed correct directly in the plan output,
+      not assumed
+- [x] `terraform plan -out=tfplan` then `terraform apply tfplan` — the safer
+      two-step pattern, so what gets executed is exactly what was reviewed
+- [x] Apply successful — `14 added, 0 changed, 0 destroyed`; new
+      VPC/subnet/NAT IDs confirmed via `terraform output`, matching the
+      apply log exactly
+- [x] `network-ids.env` formally retired — `terraform output` is now the live
+      source of truth for resource IDs, not a hand-maintained file
+      (supersedes decision #12)
+- [ ] `security` module (security groups, NACL) — next
+- [ ] `compute` module (instance profile, bastion, app instance)
+- [ ] GitHub Actions workflow for `terraform plan` on PR
+
+The cross-phase patterns this phase surfaced — false success messages,
+implicit-vs-explicit configuration, and eliminating theories with evidence
+instead of stacking guesses — are written up separately in
+[`reflections.md`](reflections.md).
+
 ## Troubleshooting log
 
 1. **Budget amount field rejected `$5`.** Validator wanted a bare number.
@@ -371,6 +423,85 @@ public to private.
     because it changed the interpretation of the result, not because
     anything was broken.
 
+30. **Homebrew's `terraform` install failed on an Xcode version mismatch.**
+    Traced to running a pre-release macOS beta (macOS 27) that Homebrew
+    explicitly doesn't support yet — its own warning said as much. Worked
+    around entirely by downloading the binary directly from HashiCorp
+    instead of going through Homebrew's build pipeline, since Terraform
+    never actually needed compilation in the first place.
+31. **`unzip` prompted to overwrite an existing `terraform` file** — a
+    leftover partial extraction from the earlier failed Homebrew attempt.
+    Confirmed and overwritten.
+32. **`terraform version` failed with `permission denied` despite `chmod +x`
+    looking correct.** Resolved over five rounds by eliminating theories
+    with direct evidence rather than guessing: file permissions confirmed
+    correct via `ls -la`; Gatekeeper quarantine confirmed absent via
+    `xattr -l`; `brew install --force-bottle` confirmed no bottle exists for
+    this formula. The real cause, found via `file`:
+    `sudo mv terraform /opt/homebrew/bin/terraform` had targeted an existing
+    *directory* of that name (a leftover scaffold folder containing only
+    `.gitkeep`), nesting the real binary one level too deep instead of
+    replacing a file. Every wrong theory was ruled out with a command that
+    could actually prove or disprove it before moving to the next one.
+33. **`cd terraform` failed with "no such file or directory," and
+    `terraform init` then silently ran in the wrong place**, reporting
+    "initialized in an empty directory" — technically true, but misleading
+    about the actual cause. Confirmed via `pwd` and `ls -la`: the repo's
+    `terraform/` folder never actually existed. It had only ever held a
+    `.gitkeep` placeholder from the original scaffold, and git famously
+    doesn't track empty directories — only files — so a folder containing
+    nothing but a placeholder can silently fail to survive being committed
+    and pushed. Compounded by `versions.tf` also not yet being downloaded.
+    Fixed with `mkdir -p terraform` plus re-downloading the file.
+34. **The very next attempt to move `versions.tf` into place failed again**
+    (`mv: ... No such file or directory`), even right after the file had
+    been re-presented — the download simply hadn't completed before the
+    command ran. The same "confirm it actually landed in `~/Downloads`
+    before chaining a `mv` onto it" lesson from Phase 5's
+    `app-userdata.sh` gap, recurring in a new context. This makes three
+    separate times across the project a download-then-move step has needed
+    a completion check first — worth treating as a standing habit at this
+    point, not a one-off.
+35. **`terraform init` failed with `No valid credential sources found`.**
+    The S3 `backend` block and the `provider "aws"` block are independent in
+    Terraform and don't share credentials — `profile = "vpc-project"` had
+    only been set on the provider. Same category of lesson as the IAM
+    `PassRole` gaps from earlier phases (two related-seeming things aren't
+    automatically linked), now surfacing inside Terraform itself instead of
+    AWS IAM.
+36. **`terraform init` then failed with `NoSuchBucket`.** The S3
+    state-bucket bootstrap step, assigned as a prerequisite several messages
+    earlier, had never actually been completed — a genuinely missed step,
+    not a config bug. Resolved by creating the bucket as admin with
+    versioning enabled.
+37. **A modified `scripts/teardown.sh` (changed outside this conversation)
+    ran in a "MODE: default" that deliberately preserved the VPC, subnets,
+    IGW, route tables, security groups, and NACL** — explicitly described in
+    its own output as "the import map for Phase 8." This directly
+    contradicted the rebuild-fresh path already chosen. Caught by reading
+    the script's actual output rather than assuming it matched intent;
+    resolved by writing `scripts/finish-teardown.sh` to complete the
+    teardown properly instead of proceeding on a mismatched assumption.
+38. **`scripts/finish-teardown.sh` had a real ordering bug**: route tables
+    were deleted before subnets, but AWS won't delete a route table with
+    active subnet associations. Both `delete-route-table` calls and the
+    subsequent `delete-vpc` call failed with `DependencyViolation` — yet
+    because the script deliberately uses `set -uo pipefail` (not `-e`, a
+    Phase 7 choice so teardown always attempts every step), it kept running
+    and printed "Full teardown complete" regardless. A false success
+    message, not from any lie, but from a script that doesn't verify its own
+    claims. Retrying the same deletes after subnets had since been removed
+    succeeded; confirmed genuinely empty with a direct `describe-vpcs` query
+    rather than trusting the script's own output.
+39. **`scripts/finish-teardown.sh` also failed with `permission denied` when
+    run directly** (`scripts/finish-teardown.sh` instead of
+    `bash scripts/finish-teardown.sh`) — downloaded files aren't executable
+    by default; invoking via `bash` sidesteps needing that bit set at all.
+40. **`terraform plan` failed with `Error: Module not installed`**
+    immediately after adding the first `module "vpc"` block. `terraform
+    init` has to be re-run any time the module list or backend configuration
+    changes — not a one-time setup step, a recurring one.
+
 ## Naming & tagging conventions
 
 | Resource | Name |
@@ -395,6 +526,8 @@ public to private.
   before Phase 8 (Terraform).
 - Decide per session: tear down the NAT Gateway + EIP, or leave running into
   the next phase — a conscious cost/convenience trade-off, not a default.
-- Begin Phase 7: finalize documentation — polished network diagram,
-  `docs/security-groups.md` populated with the actual SG/NACL rule tables,
-  cost breakdown, and teardown instructions.
+- Finish Phase 8: the `security` module (security groups, NACL), then the
+  `compute` module (instance profile, bastion, app instance), then a GitHub
+  Actions workflow running `terraform plan` on PR.
+- Cross-phase lessons from Phases 7-8 are written up in
+  [`reflections.md`](reflections.md).
