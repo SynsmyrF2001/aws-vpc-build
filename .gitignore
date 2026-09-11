@@ -11,6 +11,9 @@
 # .terraform.lock.hcl is tracked on purpose — it pins provider versions
 tfplan
 *.tfplan
+# Holds the state bucket name, which embeds the AWS account ID — public repo
+terraform/backend.hcl
+!terraform/backend.hcl.example
 
 # Downloaded installers — re-fetchable from AWS, not project source
 *.pkg

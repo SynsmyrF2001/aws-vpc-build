@@ -84,10 +84,32 @@ aws-vpc-build/
 │   ├── phase4b-create-nacl.sh
 │   ├── phase5-launch-instances.sh
 │   ├── app-userdata.sh      # Bootstraps nginx on the private app instance
-│   └── teardown.sh
+│   ├── teardown.sh
+│   └── finish-teardown.sh   # Completes a partial teardown (see build log #37-38)
 ├── terraform/               # Phase 8
+│   ├── versions.tf          # S3 backend (partial config) + provider + default_tags
+│   ├── backend.hcl.example  # Copy to backend.hcl (gitignored) before init
+│   ├── main.tf
+│   ├── outputs.tf
+│   └── modules/vpc/         # VPC, subnets, IGW, NAT, route tables
 └── .github/workflows/       # Phase 8
 ```
+
+### Running the Terraform
+
+The state bucket name embeds the AWS account ID, so it is supplied at init
+time instead of being committed (see build log decision #27):
+
+```bash
+cd terraform
+cp backend.hcl.example backend.hcl   # then fill in the real bucket name
+terraform init -backend-config=backend.hcl
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+`terraform output` is the live source of truth for resource IDs —
+`network-ids.env` is retained only as a record of the hand-built phases.
 
 ## Teardown
 

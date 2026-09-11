@@ -30,6 +30,7 @@
 | 24 | Native S3 state locking (`use_lockfile = true`, Terraform 1.10+) instead of S3 + DynamoDB | Simpler and current — one less resource to bootstrap and pay for | The older S3 + DynamoDB pattern (still valid, but now legacy — worth knowing it exists, since older tutorials assume it) |
 | 25 | Terraform module boundaries (`vpc` / `security` / `compute`) mirror the hand-built phase boundaries | The same reasoning that made those phases coherent, independently testable units applies just as well to modules | A single flat `.tf` file with everything in it (rejected — loses the composability and the parallel to the phases already documented) |
 | 26 | Full rebuild over `terraform import` for the Terraform transition — and course-corrected mid-teardown when a modified script's behavior didn't match that choice | Noticing "what actually happened doesn't match what I asked for" before building on top of it — see `reflections.md` | Proceeding as if a blank slate existed when it didn't (rejected — would have produced duplicate, conflicting infrastructure) |
+| 27 | State-bucket name supplied at init time via a gitignored `backend.hcl` (partial backend config) instead of hardcoded in `versions.tf` | The bucket name embeds the AWS account ID, and this repo is public — the same rule the build log already set for itself in Open Items. Backend blocks can't take variables or `data` sources, so `-backend-config` is the only mechanism available | Hardcoding the bucket in `versions.tf` (rejected — publishes the account ID to a public repo); `data "aws_caller_identity"` (not possible — backends are resolved before providers run) |
 
 ## Phase 0 — Guardrails & IAM
 
@@ -229,6 +230,13 @@ public to private.
 - [x] `terraform/versions.tf` — S3 backend with native locking, AWS provider
       pinned to `~> 5.0`, `default_tags` applying `Project`/`ManagedBy`
       automatically
+- [x] Backend split into partial config — `bucket` moved out of
+      `versions.tf` into a gitignored `backend.hcl`, with
+      `backend.hcl.example` committed as the template, so the account ID
+      embedded in the bucket name stays out of a public repo (decision #27).
+      Re-initialised with `terraform init -backend-config=backend.hcl`;
+      `terraform plan` then reported `No changes`, confirming the same state
+      object is still being read
 - [x] `terraform init` successful — backend connected, provider v5.100.0
       installed, `.terraform.lock.hcl` generated (committed to git, unlike
       most `.lock` files)

@@ -1,0 +1,8 @@
+# Copy to backend.hcl and fill in the real bucket name, then:
+#   terraform init -backend-config=backend.hcl
+#
+# The bucket is created once, outside Terraform, as an admin identity:
+#   aws s3api create-bucket --bucket aws-vpc-build-tfstate-<ACCOUNT_ID> --region us-east-1
+#   aws s3api put-bucket-versioning --bucket aws-vpc-build-tfstate-<ACCOUNT_ID> \
+#       --versioning-configuration Status=Enabled
+bucket = "aws-vpc-build-tfstate-<ACCOUNT_ID>"
